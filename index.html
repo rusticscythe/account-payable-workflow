@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>กระบวนการบัญชีเจ้าหนี้ - Accounts Payable Workflow</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+
+        .workflow {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .swimlane {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            min-height: 180px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .swimlane:last-child {
+            border-bottom: none;
+        }
+
+        .lane-header {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+            padding: 30px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1em;
+            border-right: 2px solid #e2e8f0;
+        }
+
+        .lane-content {
+            padding: 20px;
+            background: #f7fafc;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            overflow-x: auto;
+        }
+
+        .process-box {
+            min-width: 200px;
+            background: white;
+            border: 2px solid #cbd5e0;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .process-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            border-color: #4299e1;
+        }
+
+        .process-box.decision {
+            background: #fff5f5;
+            border-color: #fc8181;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            padding: 30px;
+            min-width: 180px;
+            min-height: 180px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .process-box.start {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            border-color: #38a169;
+        }
+
+        .process-box.end {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+            color: white;
+            border-color: #dd6b20;
+        }
+
+        .process-box h3 {
+            font-size: 0.95em;
+            margin-bottom: 8px;
+            color: #2d3748;
+        }
+
+        .process-box.start h3,
+        .process-box.end h3 {
+            color: white;
+        }
+
+        .process-box ul {
+            list-style: none;
+            font-size: 0.85em;
+            color: #4a5568;
+        }
+
+        .process-box ul li {
+            padding: 3px 0;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        .process-box ul li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #4299e1;
+            font-weight: bold;
+        }
+
+        .arrow {
+            color: #4299e1;
+            font-size: 2em;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-badge {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .waterfall-note {
+            background: #edf2f7;
+            border-left: 4px solid #4299e1;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-box {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+            border: 2px solid #cbd5e0;
+        }
+
+        .legend-box.start {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+        }
+
+        .legend-box.process {
+            background: white;
+        }
+
+        .legend-box.decision {
+            background: #fff5f5;
+            border-color: #fc8181;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+        }
+
+        .legend-box.end {
+            background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔄 กระบวนการบัญชีเจ้าหนี้</h1>
+        <p class="subtitle">Accounts Payable Workflow - SCG Home Boonthavorn</p>
+
+        <!-- Summary Section -->
+        <div style="background: linear-gradient(135deg, #fef5e7 0%, #fdebd0 100%); border-left: 5px solid #f39c12; padding: 30px; border-radius: 15px; margin-bottom: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <h2 style="color: #e67e22; margin-bottom: 20px; font-size: 1.8em;">📋 สรุปภาพรวมกระบวนการ</h2>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 25px;">
+                <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">
+                    <h3 style="color: #3498db; margin-bottom: 10px; font-size: 1.3em;">👥 จำนวนคนที่เกี่ยวข้อง</h3>
+                    <p style="font-size: 2.5em; font-weight: bold; color: #e74c3c; margin: 10px 0;">9 คน</p>
+                    <ul style="list-style: none; padding: 0; color: #555; font-size: 0.95em; line-height: 1.8;">
+                        <li>• แผนกรับเข้า (1 คน)</li>
+                        <li>• จัดซื้อตรวจสอบ (2 รอบ = 1-2 คน)</li>
+                        <li>• บัญชีตรวจเอกสาร (1 คน)</li>
+                        <li>• เจ้าหน้าที่ 1-3 (3 คน)</li>
+                        <li>• ที่ปรึกษาอาวุโส (1 คน)</li>
+                        <li>• ประธานบริหาร (1 คน)</li>
+                        <li>• บัญชีตั้งหนี้/ชำระเงิน (1 คน)</li>
+                    </ul>
+                </div>
+
+                <div style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08);">
+                    <h3 style="color: #9b59b6; margin-bottom: 10px; font-size: 1.3em;">🔄 จำนวนกระบวนการย่อย</h3>
+                    <p style="font-size: 2.5em; font-weight: bold; color: #e74c3c; margin: 10px 0;">15+ ขั้นตอน</p>
+                    <ul style="list-style: none; padding: 0; color: #555; font-size: 0.95em; line-height: 1.8;">
+                        <li><strong>Step 1:</strong> รับสินค้า + รวบรวมเอกสาร (6-7 เอกสาร)</li>
+                        <li><strong>Step 2:</strong> ตรวจสอบความครบถ้วน</li>
+                        <li><strong>Step 3:</strong> Waterfall review 3 รอบ</li>
+                        <li><strong>Step 4:</strong> ผู้บริหาร 2 ท่าน</li>
+                        <li><strong>Step 5:</strong> ตั้งหนี้ + รวม DO</li>
+                        <li><strong>Step 6:</strong> ชำระเงิน + เซ็นเช็ค</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div style="background: #fff3cd; border: 2px dashed #ffc107; padding: 25px; border-radius: 10px; margin-top: 20px;">
+                <h3 style="color: #d68910; margin-bottom: 15px; font-size: 1.4em;">⚠️ จุดที่ซ้ำซ้อนและควรปรับปรุง</h3>
+                <div style="display: grid; gap: 15px;">
+                    <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #e74c3c;">
+                        <strong style="color: #e74c3c;">🔴 1. การตรวจสอบเอกสารซ้ำซ้อน</strong>
+                        <p style="margin: 8px 0 0 0; color: #666;">• จัดซื้อตรวจ → บัญชีตรวจอีกครั้ง → เจ้าหน้าที่ 2 ตรวจอีกครั้ง (ทั้งหมด 3 รอบ)<br>
+                        <span style="color: #27ae60;">💡 คำแนะนำ: รวมการตรวจสอบความครบถ้วนให้เหลือ 1-2 รอบ</span></p>
+                    </div>
+
+                    <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #e67e22;">
+                        <strong style="color: #e67e22;">🟠 2. การอนุมัติผู้บริหารหลายชั้น</strong>
+                        <p style="margin: 8px 0 0 0; color: #666;">• ผ่าน 3 เจ้าหน้าที่ → ที่ปรึกษาอาวุโส → ประธานบริหาร (5 คนรวม)<br>
+                        <span style="color: #27ae60;">💡 คำแนะนำ: กำหนดวงเงินอนุมัติ - ถ้าต่ำกว่าเกณฑ์ให้ที่ปรึกษาอนุมัติได้เลย</span></p>
+                    </div>
+
+                    <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #f39c12;">
+                        <strong style="color: #f39c12;">🟡 3. การส่งเอกสารไปมาหลายรอบ</strong>
+                        <p style="margin: 8px 0 0 0; color: #666;">• ส่งให้ผู้บริหารตรวจ → นำกลับมาตั้งหนี้ → จัดซื้อตรวจอีกรอบ<br>
+                        <span style="color: #27ae60;">💡 คำแนะนำ: ใช้ระบบ Digital Approval เพื่อลดการส่งเอกสารกระดาษ</span></p>
+                    </div>
+
+                    <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #3498db;">
+                        <strong style="color: #3498db;">🔵 4. การติดตามเอกสารใช้ Line</strong>
+                        <p style="margin: 8px 0 0 0; color: #666;">• ติดตามใบกำกับภาษีและ Invoice ผ่าน Line (ไม่เป็นทางการ)<br>
+                        <span style="color: #27ae60;">💡 คำแนะนำ: ใช้ระบบ Vendor Portal ให้ vendor upload เอกสารเข้าระบบโดยตรง</span></p>
+                    </div>
+
+                    <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #16a085;">
+                        <strong style="color: #16a085;">🟢 5. รวม Delivery Order ทุกใบในรอบ 1 เดือน</strong>
+                        <p style="margin: 8px 0 0 0; color: #666;">• รอจนครบเดือนถึงจะทำใบรับวางบิล = ชำระเงินช้า<br>
+                        <span style="color: #27ae60;">💡 คำแนะนำ: พิจารณาทำเป็นรายสัปดาห์ หรือตาม Payment Term ของแต่ละ Vendor</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="background: #d1ecf1; border-left: 4px solid #17a2b8; padding: 20px; border-radius: 10px; margin-top: 20px;">
+                <strong style="color: #117a8b; font-size: 1.1em;">📊 สรุป:</strong>
+                <p style="margin: 10px 0 0 0; color: #0c5460; line-height: 1.8;">
+                    กระบวนการปัจจุบันใช้คนถึง <strong>9 คน</strong> ผ่าน <strong>15+ ขั้นตอน</strong> 
+                    มีการตรวจสอบซ้ำซ้อนหลายจุด หากปรับปรุงตามข้อเสนอแนะจะสามารถลดเวลาและลดจำนวนคนที่เกี่ยวข้องได้ 
+                    <strong>30-40%</strong> โดยไม่กระทบต่อการควบคุมภายใน
+                </p>
+            </div>
+        </div>
+
+        <div class="workflow">
+            <!-- Swimlane 1: แผนกรับเข้า -->
+            <div class="swimlane">
+                <div class="lane-header">
+                    📦<br>แผนกรับเข้า<br>(Receiving)
+                </div>
+                <div class="lane-content">
+                    <div class="process-box start">
+                        <div class="step-badge">1</div>
+                        <h3>📥 สินค้ามาถึงร้าน</h3>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box">
+                        <h3>รับสินค้าเข้าระบบ</h3>
+                        <ul>
+                            <li>ตรวจสอบใบสั่งซื้อในระบบ</li>
+                            <li>ใบนับสินค้าจากคลัง</li>
+                            <li>แนบใบชั่งน้ำหนักรถ</li>
+                            <li>แนบใบส่งของ (DO)</li>
+                            <li>แนบเอกสาร A5</li>
+                            <li>แนบใบกำกับภาษี (ถ้ามี)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Swimlane 2: แผนกจัดซื้อ -->
+            <div class="swimlane">
+                <div class="lane-header">
+                    🛒<br>แผนกจัดซื้อ<br>(Procurement)
+                </div>
+                <div class="lane-content">
+                    <div class="process-box">
+                        <h3>ตรวจสอบเอกสาร</h3>
+                        <ul>
+                            <li>ตรวจสอบความถูกต้อง</li>
+                            <li>ครบถ้วนสมบูรณ์</li>
+                        </ul>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box">
+                        <h3>✅ ส่งขึ้นบัญชี</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Swimlane 3: แผนกบัญชี - Step 2 -->
+            <div class="swimlane">
+                <div class="lane-header">
+                    💼<br>แผนกบัญชี<br>(Accounting)<br><br>Step 2
+                </div>
+                <div class="lane-content">
+                    <div class="process-box">
+                        <div class="step-badge">2</div>
+                        <h3>ตรวจสอบความครบถ้วน</h3>
+                        <ul>
+                            <li>ใบสั่งซื้อ</li>
+                            <li>ใบรับเข้า</li>
+                            <li>ใบส่งของ</li>
+                            <li>ใบตรวจนับจากคลัง</li>
+                            <li>ใบกำกับภาษี</li>
+                            <li>ใบชั่งน้ำหนักรถ</li>
+                            <li>เอกสาร A5</li>
+                        </ul>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box decision">
+                        <h3>สินค้าจอง?</h3>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box">
+                        <h3>ติดตาม Sales Order</h3>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box decision">
+                        <h3>มีใบกำกับภาษี?</h3>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box">
+                        <h3>📱 ติดต่อ Vendor ทาง Line</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Swimlane 4: เจ้าหน้าที่ตรวจสอบ (Waterfall) -->
+            <div class="swimlane">
+                <div class="lane-header">
+                    👥<br>เจ้าหน้าที่<br>ตรวจสอบ<br>(Verification)
+                </div>
+                <div class="lane-content">
+                    <div class="process-box">
+                        <div class="step-badge">3</div>
+                        <h3>🔄 Waterfall Review</h3>
+                        <div class="waterfall-note">
+                            <strong>เจ้าหน้าที่ 1:</strong> ตรวจค่าขนส่ง & ราคาขาย<br>
+                            ↓<br>
+                            <strong>เจ้าหน้าที่ 2:</strong> ตรวจชุดเอกสารทั้งหมด<br>
+                            ↓<br>
+                            <strong>เจ้าหน้าที่ 3:</strong> กระทบยอด ERP vs บัญชีภาษี
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Swimlane 5: ผู้บริหาร -->
+            <div class="swimlane">
+                <div class="lane-header">
+                    👔<br>ผู้บริหาร<br>(Management)
+                </div>
+                <div class="lane-content">
+                    <div class="process-box">
+                        <div class="step-badge">4</div>
+                        <h3>ที่ปรึกษาอาวุโส</h3>
+                        <ul>
+                            <li>ตรวจสอบเอกสาร</li>
+                        </ul>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box">
+                        <h3>ประธานบริหาร</h3>
+                        <ul>
+                            <li>อนุมัติเอกสาร</li>
+                        </ul>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box">
+                        <h3>✅ ส่งกลับบัญชี</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Swimlane 6: บัญชี - ตั้งหนี้ -->
+            <div class="swimlane">
+                <div class="lane-header">
+                    💼<br>แผนกบัญชี<br>(Accounting)<br><br>ตั้งหนี้
+                </div>
+                <div class="lane-content">
+                    <div class="process-box">
+                        <div class="step-badge">5</div>
+                        <h3>ทำใบรับวางบิล</h3>
+                        <ul>
+                            <li>รวม DO ทุกใบของ vendor</li>
+                            <li>รอบ 1 เดือน</li>
+                            <li>แนบ Invoice จาก vendor</li>
+                            <li>แนบชุดเอกสารเดิม</li>
+                        </ul>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box">
+                        <h3>จัดซื้อตรวจสอบ</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Swimlane 7: บัญชี - ชำระเงิน -->
+            <div class="swimlane">
+                <div class="lane-header">
+                    💼<br>แผนกบัญชี<br>(Accounting)<br><br>ชำระเงิน
+                </div>
+                <div class="lane-content">
+                    <div class="process-box">
+                        <div class="step-badge">6</div>
+                        <h3>ตั้งหนี้ + Issue Cheque</h3>
+                        <ul>
+                            <li>บันทึกบัญชี</li>
+                            <li>ออกเช็คชำระเงิน</li>
+                        </ul>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box">
+                        <h3>ประธานเซ็นเช็ค</h3>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box decision">
+                        <h3>วิธีชำระ?</h3>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box">
+                        <h3>💳 โอนเข้าบัญชี</h3>
+                        <ul>
+                            <li>นำฝากเช็คเข้า บช. vendor</li>
+                        </ul>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box">
+                        <h3>📮 ส่ง EMS</h3>
+                        <ul>
+                            <li>ส่งเช็คจ่ายให้ vendor</li>
+                        </ul>
+                    </div>
+                    <span class="arrow">→</span>
+                    <div class="process-box end">
+                        <h3>✔️ เสร็จสิ้น</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-box start"></div>
+                <span>เริ่มต้น</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box process"></div>
+                <span>ขั้นตอน</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box decision"></div>
+                <span>ตัดสินใจ</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box end"></div>
+                <span>สิ้นสุด</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add interactive tooltip on hover
+        document.querySelectorAll('.process-box').forEach(box => {
+            box.addEventListener('click', function() {
+                this.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 200);
+            });
+        });
+
+        // Print functionality
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                window.print();
+            }
+        });
+    </script>
+</body>
+</html>
